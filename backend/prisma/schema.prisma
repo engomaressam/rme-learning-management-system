@@ -1,0 +1,407 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  EMPLOYEE
+  MANAGER
+  TRAINER
+  ADMINISTRATOR
+}
+
+enum PlanStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CourseStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum RoundStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryMode {
+  IN_PERSON
+  VIRTUAL
+  HYBRID
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  COMPLETED
+  DROPPED
+  WAITLISTED
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}
+
+enum SurveyType {
+  COURSE_EVALUATION
+  MANAGER_BEHAVIOR_CHANGE
+}
+
+enum SurveyStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+}
+
+enum NotificationType {
+  PLAN_ASSIGNED
+  COURSE_ASSIGNED
+  ROUND_ADDED
+  ENROLLED
+  REMINDER
+  COURSE_COMPLETED
+  CERTIFICATE_READY
+  SURVEY_DUE
+}
+
+enum NotificationChannel {
+  EMAIL
+  IN_APP
+  CALENDAR
+}
+
+enum ProviderType {
+  INTERNAL
+  EXTERNAL
+}
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  firstName  String
+  lastName   String
+  employeeId String   @unique
+  department String
+  grade      String
+  managerId  String?
+  role       UserRole @default(EMPLOYEE)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relationships
+  manager           User?              @relation("UserManager", fields: [managerId], references: [id])
+  directReports     User[]             @relation("UserManager")
+  trainer           Trainer?
+  planAssignments   PlanAssignment[]
+  enrollments       Enrollment[]
+  notifications     Notification[]
+  surveys           Survey[]           @relation("SurveyEmployee")
+  managerSurveys    Survey[]           @relation("SurveyManager")
+  attendanceMarked  Attendance[]       @relation("AttendanceMarkedBy")
+  certificates      Certificate[]
+  fileUploads       FileUpload[]
+  createdPlans      Plan[]             @relation("PlanCreatedBy")
+  assignmentsMade   PlanAssignment[]   @relation("AssignmentMadeBy")
+
+  @@map("users")
+}
+
+model Plan {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  status      PlanStatus @default(DRAFT)
+  createdBy   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relationships
+  creator     User             @relation("PlanCreatedBy", fields: [createdBy], references: [id])
+  courses     Course[]
+  assignments PlanAssignment[]
+
+  @@map("plans")
+}
+
+model Course {
+  id          String       @id @default(uuid())
+  planId      String
+  name        String
+  description String?
+  duration    Int // in hours
+  status      CourseStatus @default(DRAFT)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relationships
+  plan         Plan           @relation(fields: [planId], references: [id], onDelete: Cascade)
+  rounds       Round[]
+  certificates Certificate[]
+
+  @@map("courses")
+}
+
+model Provider {
+  id           String       @id @default(uuid())
+  name         String       @unique
+  type         ProviderType
+  contactEmail String?
+  contactPhone String?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relationships
+  trainers Trainer[]
+  rounds   Round[]
+
+  @@map("providers")
+}
+
+model Trainer {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  providerId      String
+  specializations String[]
+  bio             String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relationships
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id])
+  rounds   Round[]
+
+  @@map("trainers")
+}
+
+model Round {
+  id            String       @id @default(uuid())
+  courseId      String
+  name          String
+  trainerId     String
+  providerId    String
+  maxSeats      Int
+  enrolledCount Int          @default(0)
+  startDate     DateTime
+  endDate       DateTime
+  deliveryMode  DeliveryMode
+  venue         String?
+  teamsLink     String?
+  status        RoundStatus  @default(SCHEDULED)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relationships
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  trainer     Trainer      @relation(fields: [trainerId], references: [id])
+  provider    Provider     @relation(fields: [providerId], references: [id])
+  sessions    Session[]
+  enrollments Enrollment[]
+
+  @@map("rounds")
+}
+
+model Session {
+  id            String   @id @default(uuid())
+  roundId       String
+  sessionNumber Int
+  date          DateTime
+  startTime     String
+  endTime       String
+  venue         String?
+  teamsLink     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relationships
+  round       Round        @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  attendance  Attendance[]
+
+  @@unique([roundId, sessionNumber])
+  @@map("sessions")
+}
+
+model Enrollment {
+  id                    String           @id @default(uuid())
+  userId                String
+  roundId               String
+  status                EnrollmentStatus @default(ENROLLED)
+  enrolledAt            DateTime         @default(now())
+  completedAt           DateTime?
+  attendancePercentage  Int              @default(0)
+  evaluationSubmitted   Boolean          @default(false)
+  certificateIssued     Boolean          @default(false)
+  certificateUrl        String?
+
+  // Relationships
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  round        Round          @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  attendance   Attendance[]
+  surveys      Survey[]
+  certificates Certificate[]
+
+  @@unique([userId, roundId])
+  @@map("enrollments")
+}
+
+model Attendance {
+  id           String   @id @default(uuid())
+  enrollmentId String
+  sessionId    String
+  isPresent    Boolean
+  markedBy     String
+  markedAt     DateTime @default(now())
+  notes        String?
+
+  // Relationships
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  session    Session    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  marker     User       @relation("AttendanceMarkedBy", fields: [markedBy], references: [id])
+
+  @@unique([enrollmentId, sessionId])
+  @@map("attendance")
+}
+
+model PlanAssignment {
+  id          String           @id @default(uuid())
+  userId      String
+  planId      String
+  assignedBy  String
+  assignedAt  DateTime         @default(now())
+  dueDate     DateTime?
+  status      AssignmentStatus @default(ASSIGNED)
+  completedAt DateTime?
+
+  // Relationships
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan     Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  assigner User @relation("AssignmentMadeBy", fields: [assignedBy], references: [id])
+
+  @@unique([userId, planId])
+  @@map("plan_assignments")
+}
+
+model Survey {
+  id            String       @id @default(uuid())
+  type          SurveyType
+  enrollmentId  String?
+  managerId     String?
+  employeeId    String?
+  status        SurveyStatus @default(PENDING)
+  scheduledDate DateTime
+  completedAt   DateTime?
+  reminderSent  Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relationships
+  enrollment Enrollment?      @relation(fields: [enrollmentId], references: [id])
+  manager    User?            @relation("SurveyManager", fields: [managerId], references: [id])
+  employee   User?            @relation("SurveyEmployee", fields: [employeeId], references: [id])
+  responses  SurveyResponse[]
+
+  @@map("surveys")
+}
+
+model SurveyResponse {
+  id          String   @id @default(uuid())
+  surveyId    String
+  questionId  String
+  response    String
+  rating      Int?
+  submittedAt DateTime @default(now())
+
+  // Relationships
+  survey Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  @@map("survey_responses")
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  type      NotificationType
+  channel   NotificationChannel
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean             @default(false)
+  sentAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model FileUpload {
+  id           String   @id @default(uuid())
+  originalName String
+  filename     String
+  mimetype     String
+  size         Int
+  path         String
+  uploadedBy   String
+  uploadedAt   DateTime @default(now())
+
+  // Relationships
+  uploader User @relation(fields: [uploadedBy], references: [id])
+
+  @@map("file_uploads")
+}
+
+model Certificate {
+  id                String   @id @default(uuid())
+  enrollmentId      String
+  userId            String
+  courseId          String
+  certificateNumber String   @unique
+  issuedDate        DateTime @default(now())
+  expiryDate        DateTime?
+  fileUrl           String
+  templateId        String
+  isValid           Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  // Relationships
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+  course     Course     @relation(fields: [courseId], references: [id])
+  template   CertificateTemplate @relation(fields: [templateId], references: [id])
+
+  @@map("certificates")
+}
+
+model CertificateTemplate {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  description  String?
+  templateData Json
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relationships
+  certificates Certificate[]
+
+  @@map("certificate_templates")
+} 
