@@ -43,7 +43,12 @@ const limiter = rateLimit({
 app.use(limiter);
 app.use(helmet());
 app.use(cors({
-  origin: config.frontendUrl,
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000', 
+    'http://10.10.11.243:5173',
+    'http://10.10.11.243:3000'
+  ],
   credentials: true
 }));
 app.use(compression());
