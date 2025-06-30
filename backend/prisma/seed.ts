@@ -50,8 +50,8 @@ async function main() {
 
   // Create Employee Users
   for (let i = 0; i < 20; i++) {
-    const managerId = sampleUsers[Math.floor(Math.random() * sampleUsers.length)].id;
-    const employee = await prisma.user.create({
+    const managerId: string = sampleUsers[Math.floor(Math.random() * sampleUsers.length)].id;
+    const employee: any = await prisma.user.create({
       data: {
         email: `employee${i + 1}@company.com`,
         password: await bcrypt.hash('password123', 12),
