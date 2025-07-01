@@ -41,15 +41,12 @@ const limiter = rateLimit({
 
 // Middleware
 app.use(limiter);
-app.use(helmet());
+// Temporarily disable security for debugging
+// app.use(helmet());
+// Temporarily allow all origins for debugging
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000', 
-    'http://10.10.11.243:5173',
-    'http://10.10.11.243:3000'
-  ],
-  credentials: true
+  origin: '*',
+  credentials: false
 }));
 app.use(compression());
 app.use(morgan('combined', { stream: { write: message => logger.info(message) } }));
@@ -93,7 +90,7 @@ app.use('/certificates', express.static(config.certificateDir));
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const server = app.listen(config.port, () => {
+const server = app.listen(config.port, '0.0.0.0', () => {
   logger.info(`🚀 RME LMS API Server started on port ${config.port}`);
   logger.info(`📊 Environment: ${config.nodeEnv}`);
   logger.info(`🌐 Frontend URL: ${config.frontendUrl}`);

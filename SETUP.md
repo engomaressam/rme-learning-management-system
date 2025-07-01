@@ -275,4 +275,14 @@ For issues and questions:
 
 ---
 
+## 🚀 Daily Startup (After Initial Setup)
+
+**For daily use, we've created simple startup scripts:**
+
+1. **Close all terminals**
+2. **Double-click** `start-lms.bat` in the root folder
+3. **Wait 30 seconds** - browser opens automatically to http://10.10.11.243:5173
+
+👉 **[See STARTUP-GUIDE.md](STARTUP-GUIDE.md)** for complete instructions and troubleshooting
+
 **Happy Learning! 🎓** 

@@ -2,6 +2,21 @@
 
 A comprehensive enterprise-grade Learning Management System built for employee training management, from plan assignment to post-training behavior measurement.
 
+## 🎯 Quick Start for Users
+
+**Want to start the LMS immediately?**
+
+1. **Close all existing terminals**
+2. **Double-click** `start-lms.bat` in the root folder  
+3. **Wait 30 seconds** for startup
+4. **Browser opens automatically** to http://10.10.11.243:5173
+
+👉 **[Complete Startup Guide](STARTUP-GUIDE.md)** with detailed instructions and troubleshooting
+
+**Login Credentials:**
+- Admin: admin@company.com / admin123
+- Employee: employee1@company.com / password123
+
 ## 🚀 Features
 
 ### Core Functionality

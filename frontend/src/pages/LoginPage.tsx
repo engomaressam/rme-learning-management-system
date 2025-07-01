@@ -2,9 +2,17 @@ import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { LoginSchema, LoginInput } from '@rme-lms/shared';
+import { z } from 'zod';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
+
+// Temporary local schema to bypass import issue
+const LoginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(6, 'Password must be at least 6 characters')
+});
+
+type LoginInput = z.infer<typeof LoginSchema>;
 
 export const LoginPage: React.FC = () => {
   const { user, login, isLoading } = useAuth();

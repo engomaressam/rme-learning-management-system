@@ -6,7 +6,7 @@ import {
   Users, 
   Calendar, 
   FileText, 
-  Settings,
+
   LogOut,
   Bell
 } from 'lucide-react';
