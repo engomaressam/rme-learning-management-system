@@ -12,14 +12,15 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0', // Allow access from network IP
-    port: 5173,
+    port: 5174,
     strictPort: false,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://10.10.11.243:3001',
         changeOrigin: true,
         secure: false,
         ws: true,
+        rewrite: (path) => path.replace(/^\/api/, '/api'),
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.log('proxy error', err);

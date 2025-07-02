@@ -43,10 +43,12 @@ const limiter = rateLimit({
 app.use(limiter);
 // Temporarily disable security for debugging
 // app.use(helmet());
-// Temporarily allow all origins for debugging
+// Temporarily allow ALL origins for troubleshooting
 app.use(cors({
-  origin: '*',
-  credentials: false
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(compression());
 app.use(morgan('combined', { stream: { write: message => logger.info(message) } }));

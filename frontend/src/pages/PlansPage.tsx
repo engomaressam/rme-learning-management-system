@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Users, Calendar, Search, Plus, Eye } from 'lucide-react';
+import { BookOpen, Search, Plus, Eye } from 'lucide-react';
 
 interface Plan {
   id: string;
@@ -33,7 +33,7 @@ export const PlansPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch('http://10.10.11.243:3001/api/plans', {
+      const response = await fetch('/api/plans', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

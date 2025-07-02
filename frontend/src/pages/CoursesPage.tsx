@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Book, Clock, Users, Calendar, Search, Filter } from 'lucide-react';
+import { Book, Clock, Calendar, Search, Filter } from 'lucide-react';
 
 interface Course {
   id: string;
@@ -44,7 +44,7 @@ export const CoursesPage: React.FC = () => {
       }
 
       // Fetch courses
-      const coursesResponse = await fetch('http://10.10.11.243:3001/api/courses', {
+      const coursesResponse = await fetch('/api/courses', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -59,7 +59,7 @@ export const CoursesPage: React.FC = () => {
       setCourses(coursesData.data || []);
 
       // Fetch plans
-      const plansResponse = await fetch('http://10.10.11.243:3001/api/plans', {
+      const plansResponse = await fetch('/api/plans', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

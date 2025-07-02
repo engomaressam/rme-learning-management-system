@@ -32,8 +32,8 @@ app.listen(PORT, HOST, () => {
 📍 Local:   http://localhost:${PORT}
 🌐 Network: http://10.10.11.243:${PORT}
 
-Backend API: http://10.10.11.243:3001
-  `);
+🚀 Ready to serve the RME Learning Management System!
+`);
 });
 
 // Graceful shutdown
