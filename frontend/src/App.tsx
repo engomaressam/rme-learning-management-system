@@ -11,6 +11,7 @@ import { UsersPage } from './pages/UsersPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { ChangePasswordPage } from './pages/ChangePasswordPage'
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
                   <Route path="/users/*" element={<UsersPage />} />
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/change-password" element={<ChangePasswordPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </Layout>

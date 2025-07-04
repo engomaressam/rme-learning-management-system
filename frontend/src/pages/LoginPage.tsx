@@ -18,6 +18,8 @@ export const LoginPage: React.FC = () => {
   const { user, login, isLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [loginData, setLoginData] = useState<LoginInput | null>(null);
 
   const {
     register,
@@ -35,12 +37,21 @@ export const LoginPage: React.FC = () => {
     try {
       setIsSubmitting(true);
       await login(data.email, data.password);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response?.data?.mustChangePassword) {
+        setMustChangePassword(true);
+        setLoginData(data);
+        // Optionally, store email for the change password page
+      }
       // Error is handled by AuthContext
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (mustChangePassword && loginData) {
+    return <Navigate to="/change-password" state={{ email: loginData.email }} replace />;
+  }
 
   if (isLoading) {
     return (

@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { LoginSchema, RegisterSchema } from '@rme-lms/shared';
 import { config } from '../config';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth';
+import { emailService } from '../services/emailService';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -162,6 +163,13 @@ router.post('/register', authenticate, async (req: AuthenticatedRequest, res) =>
         mustChangePassword: true
       }
     });
+
+    // Send welcome email
+    await emailService.sendWelcomeEmail(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+      'password123'
+    );
 
     res.status(201).json({
       success: true,
