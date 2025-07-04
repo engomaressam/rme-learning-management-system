@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "RME Learning Management System - Enterprise training platform",
   "private": true,
-
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
@@ -20,5 +19,8 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "zod": "^3.25.72"
   }
-} 
+}
