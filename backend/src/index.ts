@@ -27,6 +27,7 @@ import certificateRoutes from './routes/certificates';
 import reportRoutes from './routes/reports';
 import importRoutes from './routes/import';
 import dashboardRoutes from './routes/dashboard';
+import azureRoutes from './routes/azure';
 
 const app = express();
 
@@ -83,6 +84,7 @@ app.use('/api/certificates', certificateRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/azure', azureRoutes);
 
 // Serve static files (uploads, certificates)
 app.use('/uploads', express.static(config.uploadDir));

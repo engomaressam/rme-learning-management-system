@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
-import { auth } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 import { emailService } from '../services/emailService';
 import { logger } from '../utils/logger';
 
@@ -16,7 +16,7 @@ const createEnrollmentSchema = z.object({
 });
 
 // Create enrollment and send notification email
-router.post('/', auth, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const validatedData = createEnrollmentSchema.parse(req.body);
     
@@ -104,7 +104,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Get all enrollments
-router.get('/', auth, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const enrollments = await prisma.enrollment.findMany({
       include: {
@@ -151,7 +151,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Get enrollments by user
-router.get('/user/:userId', auth, async (req, res) => {
+router.get('/user/:userId', authenticate, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -194,7 +194,7 @@ router.get('/user/:userId', auth, async (req, res) => {
 });
 
 // Update enrollment status
-router.patch('/:id', auth, async (req, res) => {
+router.patch('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { status, completedAt } = req.body;
@@ -237,7 +237,7 @@ router.patch('/:id', auth, async (req, res) => {
 });
 
 // Delete enrollment
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -259,7 +259,7 @@ router.delete('/:id', auth, async (req, res) => {
 });
 
 // Bulk enroll users in a training plan
-router.post('/bulk', auth, async (req, res) => {
+router.post('/bulk', authenticate, async (req, res) => {
   try {
     const { userIds, planId, assignedBy, dueDate } = req.body;
 

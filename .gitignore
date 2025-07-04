@@ -111,3 +111,4 @@ Thumbs.db
 # Database files
 *.db-journal 
 azure.lms.creds.txt
+backend/.envold
