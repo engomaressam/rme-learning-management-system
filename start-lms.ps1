@@ -44,6 +44,7 @@ try {
     # Step 4: Start frontend server
     Write-Host ""
     Write-Host "[4/4] Starting Frontend Server..." -ForegroundColor Green
+    Set-Location "$ScriptDir\frontend"
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$ScriptDir\frontend'; node server.js" -WindowStyle Normal
     Write-Host "✅ Frontend server starting..." -ForegroundColor Green
     Start-Sleep -Seconds 5
