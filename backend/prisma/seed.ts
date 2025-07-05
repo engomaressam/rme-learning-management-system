@@ -26,6 +26,57 @@ async function main() {
 
   console.log('✅ Admin user created');
 
+  // Create test users with mustChangePassword=true for testing the forced password change flow
+  const testUsers = [
+    {
+      email: 'omar.essam@rowad-rme.com',
+      firstName: 'Omar',
+      lastName: 'Essam',
+      employeeId: 'TST001',
+      department: 'IT',
+      grade: 'L3',
+      role: 'EMPLOYEE'
+    },
+    {
+      email: 'ahmed.hassan@rowad-rme.com',
+      firstName: 'Ahmed',
+      lastName: 'Hassan',
+      employeeId: 'TST002',
+      department: 'Engineering',
+      grade: 'L4',
+      role: 'MANAGER'
+    },
+    {
+      email: 'sara.mohamed@rowad-rme.com',
+      firstName: 'Sara',
+      lastName: 'Mohamed',
+      employeeId: 'TST003',
+      department: 'HR',
+      grade: 'L2',
+      role: 'EMPLOYEE'
+    }
+  ];
+
+  for (const userData of testUsers) {
+    await prisma.user.upsert({
+      where: { email: userData.email },
+      update: {},
+      create: {
+        email: userData.email,
+        password: await bcrypt.hash('password123', 12),
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        employeeId: userData.employeeId,
+        department: userData.department,
+        grade: userData.grade,
+        role: userData.role as any,
+        mustChangePassword: true
+      }
+    });
+  }
+
+  console.log('✅ Test users with mustChangePassword=true created');
+
   // Create sample departments and users
   const departments = ['HR', 'Engineering', 'Sales', 'Marketing', 'Finance'];
   const grades = ['L1', 'L2', 'L3', 'L4', 'L5'];
