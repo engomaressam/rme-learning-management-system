@@ -112,3 +112,4 @@ Thumbs.db
 *.db-journal 
 azure.lms.creds.txt
 backend/.envold
+cursor_creating_a_learning_management_s.md
