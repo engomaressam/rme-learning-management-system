@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
@@ -12,6 +13,7 @@ import { ReportsPage } from './pages/ReportsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ChangePasswordPage } from './pages/ChangePasswordPage'
+import { NotificationsPage } from './pages/NotificationsPage'
 
 function App() {
   return (
@@ -32,6 +34,7 @@ function App() {
                   <Route path="/rounds/*" element={<RoundsPage />} />
                   <Route path="/users/*" element={<UsersPage />} />
                   <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
@@ -40,6 +43,28 @@ function App() {
           }
         />
       </Routes>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            style: {
+              background: '#10b981',
+            },
+          },
+          error: {
+            duration: 4000,
+            style: {
+              background: '#ef4444',
+            },
+          },
+        }}
+      />
     </AuthProvider>
   )
 }

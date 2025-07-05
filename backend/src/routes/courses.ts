@@ -9,6 +9,9 @@ const prisma = new PrismaClient();
 // GET /api/courses - Get all courses
 router.get('/', authenticate, async (req, res) => {
   try {
+    const { include } = req.query;
+    const includeRounds = include === 'rounds';
+
     const courses = await prisma.course.findMany({
       include: {
         plan: {
@@ -17,18 +20,38 @@ router.get('/', authenticate, async (req, res) => {
             name: true
           }
         },
-        _count: {
-          select: {
-            rounds: true
+        ...(includeRounds ? {
+          rounds: {
+            include: {
+              trainer: {
+                include: {
+                  user: {
+                    select: {
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
+                }
+              }
+            },
+            orderBy: {
+              startDate: 'asc'
+            }
           }
-        }
+        } : {
+          _count: {
+            select: {
+              rounds: true
+            }
+          }
+        })
       },
       orderBy: {
         createdAt: 'desc'
       }
     });
 
-    logger.info(`📚 Retrieved ${courses.length} courses`);
+    logger.info(`📚 Retrieved ${courses.length} courses${includeRounds ? ' with rounds' : ''}`);
 
     res.json({
       success: true,

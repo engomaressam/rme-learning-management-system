@@ -215,6 +215,48 @@ class EmailService {
 
     return await this.sendEmail({ to: userEmail, subject, html });
   }
+
+  async sendPasswordChangeNotificationEmail(userEmail: string, userName: string): Promise<boolean> {
+    const subject = 'Password Changed Successfully - RME LMS';
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #059669;">Password Changed Successfully</h2>
+        <p>Dear ${userName},</p>
+        <p>Your password has been successfully changed for your RME Learning Management System account.</p>
+        <div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #059669;">
+          <h3 style="margin: 0; color: #065f46;">Account Security Update</h3>
+          <p><strong>Email:</strong> ${userEmail}</p>
+          <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+        </div>
+        <p>If you did not initiate this password change, please contact your system administrator immediately.</p>
+        <p>You can access the LMS at: <a href="${process.env.FRONTEND_URL}">${process.env.FRONTEND_URL}</a></p>
+        <p>Best regards,<br>RME Learning Management Team</p>
+      </div>
+    `;
+
+    return await this.sendEmail({ to: userEmail, subject, html });
+  }
+
+  async sendCourseEnrollmentEmail(userEmail: string, userName: string, courseName: string, roundName: string, startDate?: Date): Promise<boolean> {
+    const subject = `Course Enrollment Confirmed: ${courseName}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Course Enrollment Confirmed</h2>
+        <p>Dear ${userName},</p>
+        <p>You have been successfully enrolled in the following course:</p>
+        <div style="background-color: #eff6ff; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #2563eb;">
+          <h3 style="margin: 0; color: #1d4ed8;">${courseName}</h3>
+          <p><strong>Round:</strong> ${roundName}</p>
+          ${startDate ? `<p><strong>Start Date:</strong> ${startDate.toLocaleDateString()}</p>` : ''}
+        </div>
+        <p>You can access your course materials and track your progress by logging into the LMS.</p>
+        <p><a href="${process.env.FRONTEND_URL}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Access LMS</a></p>
+        <p>Best regards,<br>RME Learning Management Team</p>
+      </div>
+    `;
+
+    return await this.sendEmail({ to: userEmail, subject, html });
+  }
 }
 
 export const emailService = new EmailService(); 

@@ -1,5 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Book, Clock, Calendar, Search, Filter } from 'lucide-react';
+import { Book, Clock, Calendar, Search, Filter, Users, MapPin, Video, CheckCircle } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+
+interface Round {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  deliveryMode: string;
+  venue?: string;
+  teamsLink?: string;
+  maxSeats: number;
+  enrolledCount: number;
+  status: string;
+}
 
 interface Course {
   id: string;
@@ -11,9 +25,7 @@ interface Course {
     id: string;
     name: string;
   };
-  _count: {
-    rounds: number;
-  };
+  rounds: Round[];
 }
 
 interface Plan {
@@ -25,6 +37,7 @@ export const CoursesPage: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [enrolling, setEnrolling] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -43,8 +56,8 @@ export const CoursesPage: React.FC = () => {
         return;
       }
 
-      // Fetch courses
-      const coursesResponse = await fetch('/api/courses', {
+      // Fetch courses with rounds
+      const coursesResponse = await fetch('/api/courses?include=rounds', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -76,6 +89,58 @@ export const CoursesPage: React.FC = () => {
       console.error('Error fetching courses:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const enrollInRound = async (roundId: string, courseName: string, roundName: string) => {
+    try {
+      setEnrolling(roundId);
+      const token = localStorage.getItem('accessToken');
+
+      const response = await fetch('/api/enrollments/self-enroll', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ roundId })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(`Successfully enrolled in ${courseName} - ${roundName}! Check your email for confirmation.`);
+        // Refresh courses to update enrollment count
+        fetchCoursesAndPlans();
+      } else {
+        toast.error(data.message || 'Failed to enroll in course');
+      }
+    } catch (error) {
+      toast.error('Failed to enroll in course');
+      console.error('Enrollment error:', error);
+    } finally {
+      setEnrolling(null);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const getDeliveryModeIcon = (mode: string) => {
+    switch (mode) {
+      case 'IN_PERSON':
+        return <MapPin className="h-4 w-4" />;
+      case 'VIRTUAL':
+        return <Video className="h-4 w-4" />;
+      case 'HYBRID':
+        return <div className="flex"><MapPin className="h-3 w-3" /><Video className="h-3 w-3 ml-1" /></div>;
+      default:
+        return <Calendar className="h-4 w-4" />;
     }
   };
 
@@ -114,7 +179,7 @@ export const CoursesPage: React.FC = () => {
             Training Courses
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Comprehensive training programs for professional development
+            Browse and enroll in available training courses
           </p>
         </div>
       </div>
@@ -169,54 +234,142 @@ export const CoursesPage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
           {filteredCourses.map((course) => (
             <div
               key={course.id}
-              className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-200"
+              className="bg-white rounded-lg shadow-md border border-gray-200"
             >
               <div className="p-6">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center">
-                    <Book className="h-5 w-5 text-blue-600 mr-2" />
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      course.status === 'ACTIVE' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {course.status}
-                    </span>
+                    <Book className="h-6 w-6 text-blue-600 mr-3" />
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        {course.name}
+                      </h3>
+                      <p className="text-sm text-blue-600 font-medium">
+                        {course.plan.name}
+                      </p>
+                    </div>
                   </div>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    course.status === 'ACTIVE' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {course.status}
+                  </span>
                 </div>
 
-                <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-                  {course.name}
-                </h3>
-
-                <p className="text-sm text-blue-600 mb-2 font-medium">
-                  {course.plan.name}
-                </p>
-
-                <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                <p className="text-gray-600 mb-4">
                   {course.description}
                 </p>
 
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <div className="flex items-center">
-                    <Clock className="h-4 w-4 mr-1" />
-                    <span>{course.duration}h</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Calendar className="h-4 w-4 mr-1" />
-                    <span>{course._count.rounds} rounds</span>
-                  </div>
+                <div className="flex items-center text-sm text-gray-500 mb-6">
+                  <Clock className="h-4 w-4 mr-1" />
+                  <span>{course.duration} hours</span>
+                  <span className="mx-2">•</span>
+                  <Calendar className="h-4 w-4 mr-1" />
+                  <span>{course.rounds.length} rounds available</span>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200">
-                    View Details
-                  </button>
-                </div>
+                {/* Course Rounds */}
+                {course.rounds.length > 0 ? (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-3">Available Rounds</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {course.rounds.map((round) => (
+                        <div
+                          key={round.id}
+                          className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="font-medium text-gray-900 text-sm">
+                              {round.name}
+                            </h5>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              round.status === 'SCHEDULED' 
+                                ? 'bg-blue-100 text-blue-800'
+                                : round.status === 'ONGOING'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {round.status}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 text-sm text-gray-600">
+                            <div className="flex items-center">
+                              <Calendar className="h-4 w-4 mr-2" />
+                              <span>{formatDate(round.startDate)} - {formatDate(round.endDate)}</span>
+                            </div>
+                            
+                            <div className="flex items-center">
+                              {getDeliveryModeIcon(round.deliveryMode)}
+                              <span className="ml-2 capitalize">
+                                {round.deliveryMode.replace('_', ' ').toLowerCase()}
+                              </span>
+                            </div>
+
+                            {round.venue && (
+                              <div className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-2" />
+                                <span>{round.venue}</span>
+                              </div>
+                            )}
+
+                            <div className="flex items-center">
+                              <Users className="h-4 w-4 mr-2" />
+                              <span>{round.enrolledCount}/{round.maxSeats} enrolled</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-4">
+                            {round.enrolledCount >= round.maxSeats ? (
+                              <button
+                                disabled
+                                className="w-full bg-gray-300 text-gray-500 font-medium py-2 px-4 rounded-md cursor-not-allowed"
+                              >
+                                Full
+                              </button>
+                            ) : round.status === 'SCHEDULED' ? (
+                              <button
+                                onClick={() => enrollInRound(round.id, course.name, round.name)}
+                                disabled={enrolling === round.id}
+                                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center"
+                              >
+                                {enrolling === round.id ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Enrolling...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Enroll Now
+                                  </>
+                                )}
+                              </button>
+                            ) : (
+                              <button
+                                disabled
+                                className="w-full bg-gray-300 text-gray-500 font-medium py-2 px-4 rounded-md cursor-not-allowed"
+                              >
+                                Not Available
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    <Calendar className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <p>No rounds scheduled for this course</p>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -237,8 +390,10 @@ export const CoursesPage: React.FC = () => {
             <div className="text-sm text-gray-600">Active Courses</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-purple-600">{plans.length}</div>
-            <div className="text-sm text-gray-600">Training Plans</div>
+            <div className="text-2xl font-bold text-purple-600">
+              {courses.reduce((total, course) => total + course.rounds.length, 0)}
+            </div>
+            <div className="text-sm text-gray-600">Available Rounds</div>
           </div>
         </div>
       </div>

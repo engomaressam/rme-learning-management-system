@@ -54,6 +54,24 @@ async function main() {
       department: 'HR',
       grade: 'L2',
       role: 'EMPLOYEE'
+    },
+    {
+      email: 'dyaa@rowad-rme.com',
+      firstName: 'Dyaa',
+      lastName: 'Khalil',
+      employeeId: 'TST004',
+      department: 'Marketing',
+      grade: 'L3',
+      role: 'EMPLOYEE'
+    },
+    {
+      email: 'ramy.ahmed@rowad-rme.com',
+      firstName: 'Ramy',
+      lastName: 'Ahmed',
+      employeeId: 'TST005',
+      department: 'Finance',
+      grade: 'L4',
+      role: 'MANAGER'
     }
   ];
 

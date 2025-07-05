@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
-import { authenticate } from '../middleware/auth';
+import { authenticate, AuthenticatedRequest } from '../middleware/auth';
 import { emailService } from '../services/emailService';
 import { logger } from '../utils/logger';
 
@@ -10,9 +10,7 @@ const prisma = new PrismaClient();
 
 const createEnrollmentSchema = z.object({
   userId: z.string().uuid(),
-  planId: z.string().uuid(),
-  assignedBy: z.string().uuid().optional(),
-  dueDate: z.string().datetime().optional(),
+  roundId: z.string().uuid(),
 });
 
 // Create enrollment and send notification email
@@ -24,31 +22,44 @@ router.post('/', authenticate, async (req, res) => {
     const existingEnrollment = await prisma.enrollment.findFirst({
       where: {
         userId: validatedData.userId,
-        planId: validatedData.planId,
+        roundId: validatedData.roundId,
       },
     });
 
     if (existingEnrollment) {
       return res.status(409).json({
         success: false,
-        message: 'User is already enrolled in this training plan',
+        message: 'User is already enrolled in this course round',
       });
     }
 
-    // Get user and plan details for email
-    const [user, plan] = await Promise.all([
+    // Get user and round details for email and notification
+    const [user, round] = await Promise.all([
       prisma.user.findUnique({
-        where: { id: validatedData.userId }
+        where: { id: validatedData.userId },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        }
       }),
-      prisma.trainingPlan.findUnique({
-        where: { id: validatedData.planId }
+      prisma.round.findUnique({
+        where: { id: validatedData.roundId },
+        include: {
+          course: {
+            include: {
+              plan: true
+            }
+          }
+        }
       })
     ]);
 
-    if (!user || !plan) {
+    if (!user || !round) {
       return res.status(404).json({
         success: false,
-        message: 'User or training plan not found',
+        message: 'User or course round not found',
       });
     }
 
@@ -56,36 +67,96 @@ router.post('/', authenticate, async (req, res) => {
     const enrollment = await prisma.enrollment.create({
       data: {
         userId: validatedData.userId,
-        planId: validatedData.planId,
-        assignedBy: validatedData.assignedBy,
-        dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : undefined,
-        status: 'ASSIGNED',
+        roundId: validatedData.roundId,
+        status: 'ENROLLED',
         enrolledAt: new Date(),
       },
       include: {
-        user: true,
-        plan: true,
-        assignedByUser: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          }
+        },
+        round: {
+          include: {
+            course: {
+              include: {
+                plan: true
+              }
+            }
+          }
+        },
       },
     });
 
-    // Send email notification in background
-    const dueDate = validatedData.dueDate ? new Date(validatedData.dueDate) : undefined;
-    emailService.sendTrainingAssignmentEmail(
-      user.email,
-      user.firstName + ' ' + user.lastName,
-      plan.title,
-      dueDate
-    ).catch(error => {
-      logger.error('Failed to send training assignment email:', error);
+    // Send email notification to user
+    try {
+      await emailService.sendCourseEnrollmentEmail(
+        user.email,
+        `${user.firstName} ${user.lastName}`,
+        round.course.name,
+        round.name,
+        round.startDate
+      );
+      logger.info(`Enrollment email sent to ${user.email} for course: ${round.course.name}`);
+    } catch (emailError) {
+      logger.error('Failed to send enrollment email:', emailError);
+    }
+
+    // Create in-site notification for user
+    await prisma.notification.create({
+      data: {
+        userId: user.id,
+        type: 'ENROLLED',
+        channel: 'IN_APP',
+        title: 'Course Enrollment Confirmed',
+        message: `You have been successfully enrolled in "${round.course.name}" - ${round.name}`,
+        data: {
+          courseId: round.course.id,
+          courseName: round.course.name,
+          roundId: round.id,
+          roundName: round.name,
+          enrollmentId: enrollment.id
+        }
+      }
     });
 
-    logger.info(`User ${user.email} enrolled in training plan: ${plan.title}`);
+    // Create notification for admin users
+    const adminUsers = await prisma.user.findMany({
+      where: { role: 'ADMINISTRATOR' },
+      select: { id: true }
+    });
+
+    for (const admin of adminUsers) {
+      await prisma.notification.create({
+        data: {
+          userId: admin.id,
+          type: 'ENROLLED',
+          channel: 'IN_APP',
+          title: 'New Course Enrollment',
+          message: `${user.firstName} ${user.lastName} enrolled in "${round.course.name}" - ${round.name}`,
+          data: {
+            enrolledUserId: user.id,
+            enrolledUserName: `${user.firstName} ${user.lastName}`,
+            courseId: round.course.id,
+            courseName: round.course.name,
+            roundId: round.id,
+            roundName: round.name,
+            enrollmentId: enrollment.id
+          }
+        }
+      });
+    }
+
+    logger.info(`User ${user.email} enrolled in course round: ${round.course.name} - ${round.name}`);
 
     res.status(201).json({
       success: true,
       data: enrollment,
-      message: 'Enrollment created successfully and notification email sent',
+      message: 'Enrollment created successfully, notifications sent',
     });
   } catch (error) {
     logger.error('Failed to create enrollment:', error);
@@ -116,11 +187,16 @@ router.get('/', authenticate, async (req, res) => {
             email: true,
           },
         },
-        plan: {
+        round: {
           select: {
             id: true,
-            title: true,
-            description: true,
+            name: true,
+            course: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
         assignedByUser: {
@@ -160,9 +236,9 @@ router.get('/user/:userId', authenticate, async (req, res) => {
         userId,
       },
       include: {
-        plan: {
+        round: {
           include: {
-            courses: {
+            course: {
               include: {
                 rounds: {
                   include: {
@@ -207,7 +283,7 @@ router.patch('/:id', authenticate, async (req, res) => {
       },
       include: {
         user: true,
-        plan: true,
+        round: true,
       },
     });
 
@@ -216,7 +292,7 @@ router.patch('/:id', authenticate, async (req, res) => {
       emailService.sendTrainingAssignmentEmail(
         enrollment.user.email,
         enrollment.user.firstName + ' ' + enrollment.user.lastName,
-        `Congratulations! You have completed: ${enrollment.plan.title}`
+        `Congratulations! You have completed: ${enrollment.round.course.name} - ${enrollment.round.name}`
       ).catch(error => {
         logger.error('Failed to send completion email:', error);
       });
@@ -261,7 +337,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 // Bulk enroll users in a training plan
 router.post('/bulk', authenticate, async (req, res) => {
   try {
-    const { userIds, planId, assignedBy, dueDate } = req.body;
+    const { userIds, roundId, assignedBy, dueDate } = req.body;
 
     if (!Array.isArray(userIds) || userIds.length === 0) {
       return res.status(400).json({
@@ -270,25 +346,32 @@ router.post('/bulk', authenticate, async (req, res) => {
       });
     }
 
-    // Get plan details for email
-    const plan = await prisma.trainingPlan.findUnique({
-      where: { id: planId }
+    // Get round details for email
+    const round = await prisma.round.findUnique({
+      where: { id: roundId },
+      include: {
+        course: {
+          include: {
+            plan: true
+          }
+        }
+      }
     });
 
-    if (!plan) {
+    if (!round) {
       return res.status(404).json({
         success: false,
-        message: 'Training plan not found',
+        message: 'Course round not found',
       });
     }
 
     // Create enrollments
     const enrollmentData = userIds.map(userId => ({
       userId,
-      planId,
+      roundId,
       assignedBy,
       dueDate: dueDate ? new Date(dueDate) : undefined,
-      status: 'ASSIGNED' as const,
+      status: 'ENROLLED' as const,
       enrolledAt: new Date(),
     }));
 
@@ -307,11 +390,12 @@ router.post('/bulk', authenticate, async (req, res) => {
     });
 
     const emailPromises = users.map(user => 
-      emailService.sendTrainingAssignmentEmail(
+      emailService.sendCourseEnrollmentEmail(
         user.email,
-        user.firstName + ' ' + user.lastName,
-        plan.title,
-        dueDate ? new Date(dueDate) : undefined
+        `${user.firstName} ${user.lastName}`,
+        round.course.name,
+        round.name,
+        round.startDate
       ).catch(error => {
         logger.error(`Failed to send email to ${user.email}:`, error);
       })
@@ -320,13 +404,14 @@ router.post('/bulk', authenticate, async (req, res) => {
     // Send all emails in parallel (don't wait for completion)
     Promise.all(emailPromises);
 
-    logger.info(`Bulk enrolled ${enrollments.count} users in training plan: ${plan.title}`);
+    logger.info(`Bulk enrolled ${enrollments.count} users in course round: ${round.course.name} - ${round.name}`);
 
     res.status(201).json({
       success: true,
       data: {
         enrolledCount: enrollments.count,
-        planTitle: plan.title,
+        courseName: round.course.name,
+        roundName: round.name,
       },
       message: `Successfully enrolled ${enrollments.count} users and sent notification emails`,
     });
@@ -338,5 +423,176 @@ router.post('/bulk', authenticate, async (req, res) => {
     });
   }
 });
+
+// Simple self-enrollment endpoint for testing
+router.post('/self-enroll', authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { roundId } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+
+    if (!roundId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Round ID is required'
+      });
+    }
+
+    // Check if user is already enrolled
+    const existingEnrollment = await prisma.enrollment.findFirst({
+      where: {
+        userId,
+        roundId,
+      },
+    });
+
+    if (existingEnrollment) {
+      return res.status(409).json({
+        success: false,
+        message: 'You are already enrolled in this course round',
+      });
+    }
+
+    // Get user and round details
+    const [user, round] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        }
+      }),
+      prisma.round.findUnique({
+        where: { id: roundId },
+        include: {
+          course: {
+            include: {
+              plan: true
+            }
+          }
+        }
+      })
+    ]);
+
+    if (!user || !round) {
+      return res.status(404).json({
+        success: false,
+        message: 'User or course round not found',
+      });
+    }
+
+    // Create enrollment
+    const enrollment = await prisma.enrollment.create({
+      data: {
+        userId,
+        roundId,
+        status: 'ENROLLED',
+        enrolledAt: new Date(),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          }
+        },
+        round: {
+          include: {
+            course: {
+              include: {
+                plan: true
+              }
+            }
+          }
+        },
+      },
+    });
+
+    // Send email notification to user
+    try {
+      await emailService.sendCourseEnrollmentEmail(
+        user.email,
+        `${user.firstName} ${user.lastName}`,
+        round.course.name,
+        round.name,
+        round.startDate
+      );
+      logger.info(`Enrollment email sent to ${user.email} for course: ${round.course.name}`);
+    } catch (emailError) {
+      logger.error('Failed to send enrollment email:', emailError);
+    }
+
+    // Create in-site notification for user
+    await prisma.notification.create({
+      data: {
+        userId: user.id,
+        type: 'ENROLLED',
+        channel: 'IN_APP',
+        title: 'Course Enrollment Confirmed',
+        message: `You have successfully enrolled in "${round.course.name}" - ${round.name}`,
+        data: {
+          courseId: round.course.id,
+          courseName: round.course.name,
+          roundId: round.id,
+          roundName: round.name,
+          enrollmentId: enrollment.id
+        }
+      }
+    });
+
+    // Create notification for admin users
+    const adminUsers = await prisma.user.findMany({
+      where: { role: 'ADMINISTRATOR' },
+      select: { id: true }
+    });
+
+    for (const admin of adminUsers) {
+      await prisma.notification.create({
+        data: {
+          userId: admin.id,
+          type: 'ENROLLED',
+          channel: 'IN_APP',
+          title: 'New Course Enrollment',
+          message: `${user.firstName} ${user.lastName} enrolled in "${round.course.name}" - ${round.name}`,
+          data: {
+            enrolledUserId: user.id,
+            enrolledUserName: `${user.firstName} ${user.lastName}`,
+            courseId: round.course.id,
+            courseName: round.course.name,
+            roundId: round.id,
+            roundName: round.name,
+            enrollmentId: enrollment.id
+          }
+        }
+      });
+    }
+
+    logger.info(`User ${user.email} self-enrolled in course round: ${round.course.name} - ${round.name}`);
+
+    res.status(201).json({
+      success: true,
+      data: enrollment,
+      message: 'Successfully enrolled in course, notifications sent',
+    });
+  } catch (error) {
+    logger.error('Failed to self-enroll:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to enroll in course',
+    });
+  }
+});
+
+// Get all available courses and rounds for enrollment
 
 export default router; 

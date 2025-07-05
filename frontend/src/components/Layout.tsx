@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -28,6 +28,35 @@ const navigation = [
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    // Refresh unread count every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return;
+
+      const response = await fetch('/api/notifications?unreadOnly=true', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUnreadCount(data.data?.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread notifications count:', error);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -85,9 +114,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </h1>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <button className="p-2 text-gray-400 hover:text-gray-500">
+                  <Link
+                    to="/notifications"
+                    className="relative p-2 text-gray-400 hover:text-gray-500"
+                    title="Notifications"
+                  >
                     <Bell className="h-5 w-5" />
-                  </button>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </Link>
                   <div className="flex items-center space-x-3">
                     <div className="text-sm">
                       <p className="font-medium text-gray-900">

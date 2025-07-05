@@ -6,6 +6,7 @@ import { LoginSchema, RegisterSchema } from '@rme-lms/shared';
 import { config } from '../config';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth';
 import { emailService } from '../services/emailService';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -329,6 +330,19 @@ router.post('/change-password', async (req, res) => {
           data: { password: hashedNewPassword, mustChangePassword: false }
         });
 
+        // Get user details for email notification
+        const updatedUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true, firstName: true, lastName: true }
+        });
+
+        if (updatedUser) {
+          await emailService.sendPasswordChangeNotificationEmail(
+            updatedUser.email,
+            `${updatedUser.firstName} ${updatedUser.lastName}`
+          );
+        }
+
         res.json({
           success: true,
           message: 'Password changed successfully.'
@@ -374,6 +388,19 @@ router.post('/change-password', async (req, res) => {
         data: { password: hashedNewPassword, mustChangePassword: false }
       });
 
+      // Get user details for email notification
+      const updatedUser = await prisma.user.findUnique({
+        where: { email },
+        select: { firstName: true, lastName: true }
+      });
+
+      if (updatedUser) {
+        await emailService.sendPasswordChangeNotificationEmail(
+          email,
+          `${updatedUser.firstName} ${updatedUser.lastName}`
+        );
+      }
+
       res.json({
         success: true,
         message: 'Password changed successfully. You can now log in with your new password.'
@@ -383,6 +410,47 @@ router.post('/change-password', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to change password.'
+    });
+  }
+});
+
+// Test email endpoint for debugging
+router.post('/test-email', authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+
+    // Test sending a course enrollment email
+    const success = await emailService.sendCourseEnrollmentEmail(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+      'Test Course - Email Service Check',
+      'Test Round - Debugging',
+      new Date()
+    );
+
+    if (success) {
+      logger.info(`Test email sent successfully to ${user.email}`);
+      res.json({
+        success: true,
+        message: `Test enrollment email sent to ${user.email}`
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send test email'
+      });
+    }
+  } catch (error) {
+    logger.error('Test email endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Test email failed'
     });
   }
 });

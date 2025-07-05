@@ -1,0 +1,7 @@
+Test All Users:
+Now you have 5 test users with forced password change:
+omar.essam@rowad-rme.com / password123 ✅ (already tested)
+ahmed.hassan@rowad-rme.com / password123
+sara.mohamed@rowad-rme.com / password123
+dyaa@rowad-rme.com / password123 🆕
+ramy.ahmed@rowad-rme.com / password123 🆕
