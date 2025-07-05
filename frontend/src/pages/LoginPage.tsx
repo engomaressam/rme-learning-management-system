@@ -38,12 +38,12 @@ export const LoginPage: React.FC = () => {
       setIsSubmitting(true);
       await login(data.email, data.password);
     } catch (error: any) {
-      if (error.response?.data?.mustChangePassword) {
+      // Check if it's a 403 with mustChangePassword
+      if (error.response?.status === 403 && error.response?.data?.mustChangePassword) {
         setMustChangePassword(true);
         setLoginData(data);
-        // Optionally, store email for the change password page
       }
-      // Error is handled by AuthContext
+      // Other errors are handled by AuthContext and will show toast notifications
     } finally {
       setIsSubmitting(false);
     }

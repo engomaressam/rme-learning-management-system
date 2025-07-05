@@ -10,7 +10,7 @@ echo.
 
 cd /d "%~dp0"
 
-echo [1/4] Building shared package...
+echo [1/3] Building shared package...
 cd shared
 call npm run build
 if errorlevel 1 (
@@ -19,22 +19,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [2/4] Starting Backend Server...
+echo [2/3] Starting Backend Server...
 cd ..\backend
 start "RME LMS Backend" cmd /k "npm run dev"
-timeout /t 8 /nobreak >nul
+timeout /t 5 /nobreak >nul
 
-echo [3/4] Building Frontend...
+echo [3/3] Starting Frontend Development Server...
 cd ..\frontend
-call npm run build
-if errorlevel 1 (
-    echo ERROR: Failed to build frontend
-    pause
-    exit /b 1
-)
-
-echo [4/4] Starting Frontend Server...
-start "RME LMS Frontend" cmd /k "node server.js"
+start "RME LMS Frontend" cmd /k "npm run dev"
 timeout /t 5 /nobreak >nul
 
 echo.
@@ -44,11 +36,12 @@ echo
 echo   Backend:  http://10.10.11.243:3001
 echo   Frontend: http://10.10.11.243:5173
 echo   
-echo   Opening browser in 3 seconds...
+echo   Opening browser in 5 seconds...
+echo   Note: Frontend may take a moment to start on port 5173
 echo =====================================================
 echo.
 
-timeout /t 3 /nobreak >nul
+timeout /t 5 /nobreak >nul
 start http://10.10.11.243:5173
 
 echo.

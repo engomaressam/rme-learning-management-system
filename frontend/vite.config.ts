@@ -12,7 +12,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0', // Allow access from network IP
-    port: 5174,
+    port: 5173,
     strictPort: false,
     proxy: {
       '/api': {

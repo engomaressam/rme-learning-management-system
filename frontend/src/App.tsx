@@ -18,6 +18,7 @@ function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route
           path="/*"
           element={
@@ -32,7 +33,6 @@ function App() {
                   <Route path="/users/*" element={<UsersPage />} />
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/change-password" element={<ChangePasswordPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </Layout>
